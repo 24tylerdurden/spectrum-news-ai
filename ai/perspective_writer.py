@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PerspectiveResult:
     topic: str
+    description: str
+    tags: list[str]
+    category: str
     left_headline: str
     left_summary: str
     left_body: str
@@ -71,6 +74,9 @@ Content: {right_article_text}
 Generate a structured JSON response with exactly this shape:
 {{
   "topic": "neutral 6-10 word headline summarizing the story",
+  "description": "2-3 sentence description of the news story",
+  "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "category": "politics or economy or world or sports or entertainment or technology or health or environment or other",
   "left": {{
     "headline": "headline written in the framing of the left source",
     "summary": "2-3 sentence summary of how left media covered this",
@@ -143,7 +149,8 @@ Rules:
                 "model": self.model,
                 "prompt": f"{system_prompt}\n\n{user_prompt}",
                 "stream": False,
-                "format": "json"
+                "format": "json",
+                "options": {"temperatue": 0}
             }
         )
         response.raise_for_status()
@@ -163,6 +170,9 @@ Rules:
         
         return PerspectiveResult(
             topic=data["topic"],
+            description=data.get("description", ""),
+            tags=data.get("tags", []),
+            category=data.get("category", "politics"),
             left_headline=data["left"]["headline"],
             left_summary=data["left"]["summary"],
             left_body=data["left"]["body"],
@@ -191,6 +201,9 @@ Content: {right_article_text}
 Return exactly this JSON structure:
 {{
   "topic": "neutral headline",
+  "description": "2-3 sentence description",
+  "tags": ["tag1", "tag2", "tag3"],
+  "category": "politics",
   "left": {{
     "headline": "left framing",
     "summary": "2-3 sentences",

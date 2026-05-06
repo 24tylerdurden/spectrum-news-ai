@@ -21,6 +21,42 @@ class DatabaseClient:
         self.pool = await asyncpg.create_pool(self.database_url, min_size=2, max_size=10)
         logger.info("Database client initialized")
 
+    async def _get_or_create_category(self, category_name: str) -> int:
+        """Get category ID by name, or create it if it doesn't exist."""
+        if not self.pool:
+            raise RuntimeError("Database not initialized")
+        
+        async with self.pool.acquire() as conn:
+            # Try to get existing category
+            category_id = await conn.fetchval(
+                "SELECT id FROM categories WHERE slug = $1",
+                category_name.lower()
+            )
+            
+            if category_id:
+                return category_id
+            
+            # Generate a unique ID for the new category
+            new_id = await conn.fetchval(
+                "SELECT COALESCE(MAX(id), 0) + 1 FROM categories"
+            )
+            
+            # Create the category
+            slug = category_name.lower().replace(' ', '-')
+            await conn.execute("""
+                INSERT INTO categories (id, name, slug, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5)
+            """,
+            new_id,
+            category_name,
+            slug,
+            datetime.utcnow(),
+            datetime.utcnow()
+            )
+            
+            logger.info(f"Created new category: {category_name} with ID {new_id}")
+            return new_id
+
     async def save_article(self, result: PerspectiveResult, image_url: Optional[str] = None) -> Optional[str]:
         """Save article and perspectives to database."""
         if not self.pool:
@@ -41,19 +77,29 @@ class DatabaseClient:
                         logger.info(f"Article with slug '{slug}' already exists, skipping")
                         return None
                     
+                    # Get or create category
+                    category_id = await self._get_or_create_category(result.category)
+                    
+                    # Build metadata
+                    metadata = {"image_url": image_url, "description": result.description}
+                    if image_url:
+                        metadata["image_url"] = image_url
+                    
                     # Insert article
                     article_id = await conn.fetchval("""
-                        INSERT INTO articles (slug, original_url, topic, status, published_at, created_at, updated_at, metadata)
-                        VALUES ($1, $2, $3, 'published', $4, $5, $6, $7)
+                        INSERT INTO articles (slug, original_url, topic, category_id, status, published_at, created_at, updated_at, metadata, tags)
+                        VALUES ($1, $2, $3, $4, 'published', $5, $6, $7, $8, $9)
                         RETURNING id
                     """, 
                     slug,
                     result.left_source_url,  # Use left source as primary original URL
                     result.topic,
+                    category_id,
                     datetime.utcnow(),
                     datetime.utcnow(),
                     datetime.utcnow(),
-                    json.dumps({"image_url": image_url} if image_url else {})
+                    json.dumps(metadata),
+                    result.tags
                     )
                     
                     # Insert left perspective
