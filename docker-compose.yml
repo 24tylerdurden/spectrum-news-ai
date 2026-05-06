@@ -1,0 +1,10 @@
+
+services:
+  news-pipeline:
+    build: .
+    container_name: biased-india-pipeline
+    restart: unless-stopped
+    env_file:
+      - .env.example
+    volumes:
+      - ./logs:/app/logs
