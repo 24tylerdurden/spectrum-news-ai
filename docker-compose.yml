@@ -8,3 +8,7 @@ services:
       - .env.example
     volumes:
       - ./logs:/app/logs
+      - models_cache:/app/models_cache
+
+volumes:
+  models_cache:

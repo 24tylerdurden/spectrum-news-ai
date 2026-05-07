@@ -81,14 +81,14 @@ class DatabaseClient:
                     category_id = await self._get_or_create_category(result.category)
                     
                     # Build metadata
-                    metadata = {"image_url": image_url, "description": result.description}
+                    metadata = {"image_url": image_url}
                     if image_url:
                         metadata["image_url"] = image_url
                     
                     # Insert article
                     article_id = await conn.fetchval("""
-                        INSERT INTO articles (slug, original_url, topic, category_id, status, published_at, created_at, updated_at, metadata, tags)
-                        VALUES ($1, $2, $3, $4, 'published', $5, $6, $7, $8, $9)
+                        INSERT INTO articles (slug, original_url, topic, category_id, status, published_at, created_at, updated_at, metadata, tags, description)
+                        VALUES ($1, $2, $3, $4, 'published', $5, $6, $7, $8, $9, $10)
                         RETURNING id
                     """, 
                     slug,
@@ -99,7 +99,8 @@ class DatabaseClient:
                     datetime.utcnow(),
                     datetime.utcnow(),
                     json.dumps(metadata),
-                    result.tags
+                    result.tags,
+                    result.description
                     )
                     
                     # Insert left perspective

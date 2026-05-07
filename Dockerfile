@@ -20,6 +20,11 @@ RUN mkdir -p logs
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV TRANSFORMERS_CACHE=/app/models_cache
+ENV HF_HOME=/app/models_cache
+
+# Create cache directory for models
+RUN mkdir -p /app/models_cache
 
 # Run the application
 CMD ["python", "main.py", "--run-now"]

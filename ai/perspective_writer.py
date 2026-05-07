@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Optional
 import json
 import logging
+import re
 
 from clustering import Cluster
 from scraper import RawArticle
@@ -59,45 +60,74 @@ class PerspectiveWriter:
         left_article = cluster.left_articles[0]
         right_article = cluster.right_articles[0]
         
-        system_prompt = """You are a senior political journalist writing for an Indian news aggregator called "Biased India". Your job is to present the same news story from two distinct political perspectives based on how real Indian media outlets actually covered it."""
+        system_prompt = """You are an expert Indian political journalist and editorial writer for "Biased India", a news aggregator that presents the same story from multiple political perspectives. Your job is to transform raw news reports into compelling, human-written style articles that genuinely reflect how different political leanings would frame the same story.
+
+Your writing must be:
+- Engaging and readable (not dry or robotic)
+- Journalistically professional but with clear ideological framing
+- Factually accurate to the source material
+- Distinctly different between left and right perspectives
+- Written in active voice with strong verbs
+- Include specific quotes, statistics, and details from sources"""
         
-        user_prompt = f"""Below are real articles from Indian news outlets covering the same story.
+        user_prompt = f"""You are transforming raw news reports into compelling editorial pieces. Below are two articles from Indian news outlets with different political leanings covering the same story.
 
 LEFT-LEANING SOURCE ({left_article.source_name}):
 Headline: {left_article.title}
-Content: {left_article_text}
+Full Article: {left_article_text}
 
 RIGHT-LEANING SOURCE ({right_article.source_name}):
 Headline: {right_article.title}
-Content: {right_article_text}
+Full Article: {right_article_text}
 
-Generate a structured JSON response with exactly this shape:
+Your task:
+1. Extract key facts, quotes, statistics, and specific details from both articles
+2. Write a compelling neutral headline that captures the essence
+3. Write an engaging 2-3 sentence description that hooks the reader
+4. Generate 5 relevant tags for categorization
+5. Assign the most appropriate category
+6. Write TWO distinctly different editorial pieces - one from a left/progressive framing, one from a right/conservative framing
+
+CRITICAL: The left and right perspectives MUST be genuinely different in:
+- Tone and language (left: more social justice focus, right: more economic/nationalist focus)
+- What they emphasize (left: impact on people, right: policy/implementation focus)
+- How they frame the issues (left: systemic concerns, right: individual responsibility)
+- The angle they take on the same facts
+
+Write in a human, journalistic style - not robotic or generic. Use specific details, quotes, and numbers from the articles. Make it read like something written by a skilled journalist who genuinely holds those political views.
+
+Return ONLY a JSON object. No other text before or after. No markdown formatting.
+
+JSON format:
 {{
-  "topic": "neutral 6-10 word headline summarizing the story",
-  "description": "2-3 sentence description of the news story",
+  "topic": "compelling neutral headline (8-12 words, hook the reader)",
+  "description": "engaging 2-3 sentence hook that makes people want to read more",
   "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
-  "category": "politics or economy or world or sports or entertainment or technology or health or environment or other",
+  "category": "politics",
   "left": {{
-    "headline": "headline written in the framing of the left source",
-    "summary": "2-3 sentence summary of how left media covered this",
-    "body": "HTML string with 3-4 <p> tags OR a <ul>/<ol> list. Reflect the actual framing, language, and concerns of the left source. 150-200 words.",
+    "headline": "headline reflecting left/progressive framing",
+    "summary": "2-3 sentence summary from left perspective",
+    "body": "200-250 words in HTML with <p> tags. Write as a left-leaning journalist would. Emphasize social justice, government accountability, impact on ordinary people.",
     "source_name": "{left_article.source_name}",
     "source_url": "{left_article.url}"
   }},
   "right": {{
-    "headline": "headline written in the framing of the right source",
-    "summary": "2-3 sentence summary of how right media covered this",
-    "body": "HTML string with 3-4 <p> tags OR a <ul>/<ol> list. Reflect the actual framing, language, and concerns of the right source. 150-200 words.",
+    "headline": "headline reflecting right/conservative framing",
+    "summary": "2-3 sentence summary from right perspective", 
+    "body": "200-250 words in HTML with <p> tags. Write as a right-leaning journalist would. Emphasize economic impact, national security, traditional values, policy efficiency.",
     "source_name": "{right_article.source_name}",
     "source_url": "{right_article.url}"
   }}
 }}
 
-Rules:
-- Never invent facts. Only use what is in the provided articles.
-- Do not use &nbsp; in HTML. Use regular spaces only.
-- Do not add any text outside the JSON object.
-- The left and right bodies must sound genuinely different in tone and focus."""
+IMPORTANT JSON RULES:
+- Use ONLY the exact field names shown above
+- All string values must be in double quotes
+- Arrays use square brackets with comma-separated values
+- No trailing commas before closing braces
+- Category must be ONE word from: politics, economy, world, sports, entertainment, technology, health, environment, other
+- No markdown code blocks, no extra text
+- Valid JSON only"""
         
         try:
             if self.provider == "anthropic":
@@ -166,23 +196,42 @@ Rules:
             return None
         
         json_str = response_text[json_start:json_end]
-        data = json.loads(json_str)
+        
+        # Try to fix common JSON issues before parsing
+        # Remove markdown code block markers
+        json_str = re.sub(r'^```json\s*', '', json_str)
+        json_str = re.sub(r'```\s*$', '', json_str)
+        
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error: {e}. Raw text: {json_str[:200]}...")
+            return None
+        
+        # Safely extract category - ensure single word
+        category = data.get("category", "politics").lower().strip()
+        # Take only first word if multiple words or slashes
+        category = re.split(r'[/\s]', category)[0]
+        # Validate it's in allowed list
+        allowed = ["politics", "economy", "world", "sports", "entertainment", "technology", "health", "environment", "other"]
+        if category not in allowed:
+            category = "other"
         
         return PerspectiveResult(
-            topic=data["topic"],
+            topic=data.get("topic", "News Update"),
             description=data.get("description", ""),
-            tags=data.get("tags", []),
-            category=data.get("category", "politics"),
-            left_headline=data["left"]["headline"],
-            left_summary=data["left"]["summary"],
-            left_body=data["left"]["body"],
-            left_source_name=data["left"]["source_name"],
-            left_source_url=data["left"]["source_url"],
-            right_headline=data["right"]["headline"],
-            right_summary=data["right"]["summary"],
-            right_body=data["right"]["body"],
-            right_source_name=data["right"]["source_name"],
-            right_source_url=data["right"]["source_url"]
+            tags=data.get("tags", ["news", "india", "politics"]),
+            category=category,
+            left_headline=data.get("left", {}).get("headline", left_article.title),
+            left_summary=data.get("left", {}).get("summary", ""),
+            left_body=data.get("left", {}).get("body", ""),
+            left_source_name=data.get("left", {}).get("source_name", left_article.source_name),
+            left_source_url=data.get("left", {}).get("source_url", left_article.url),
+            right_headline=data.get("right", {}).get("headline", right_article.title),
+            right_summary=data.get("right", {}).get("summary", ""),
+            right_body=data.get("right", {}).get("body", ""),
+            right_source_name=data.get("right", {}).get("source_name", right_article.source_name),
+            right_source_url=data.get("right", {}).get("source_url", right_article.url)
         )
 
     def _retry_with_strict_prompt(self, cluster: Cluster, left_article_text: str, right_article_text: str) -> Optional[PerspectiveResult]:
@@ -190,35 +239,13 @@ Rules:
         left_article = cluster.left_articles[0]
         right_article = cluster.right_articles[0]
         
-        strict_prompt = f"""You must return ONLY valid JSON. No other text.
+        strict_prompt = f"""Output ONLY a JSON object. No explanation. No markdown. No extra text.
 
-LEFT: {left_article.title}
-Content: {left_article_text}
+Story 1: {left_article.title}
+Story 2: {right_article.title}
 
-RIGHT: {right_article.title}
-Content: {right_article_text}
-
-Return exactly this JSON structure:
-{{
-  "topic": "neutral headline",
-  "description": "2-3 sentence description",
-  "tags": ["tag1", "tag2", "tag3"],
-  "category": "politics",
-  "left": {{
-    "headline": "left framing",
-    "summary": "2-3 sentences",
-    "body": "HTML with 3-4 <p> tags, 150-200 words",
-    "source_name": "{left_article.source_name}",
-    "source_url": "{left_article.url}"
-  }},
-  "right": {{
-    "headline": "right framing",
-    "summary": "2-3 sentences",
-    "body": "HTML with 3-4 <p> tags, 150-200 words",
-    "source_name": "{right_article.source_name}",
-    "source_url": "{right_article.url}"
-  }}
-}}"""
+Write this exact JSON structure with real content:
+{{"topic":"headline here","description":"description here","tags":["tag1","tag2","tag3","tag4","tag5"],"category":"politics","left":{{"headline":"left headline","summary":"left summary","body":"<p>paragraph 1</p><p>paragraph 2</p>","source_name":"{left_article.source_name}","source_url":"{left_article.url}"}},"right":{{"headline":"right headline","summary":"right summary","body":"<p>paragraph 1</p><p>paragraph 2</p>","source_name":"{right_article.source_name}","source_url":"{right_article.url}"}}}}"""
         
         try:
             if self.provider == "anthropic":

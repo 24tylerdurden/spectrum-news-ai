@@ -110,12 +110,14 @@ class PipelineOrchestrator:
         
         left_text_result = await self.article_scraper.scrape_article(
             left_article.url,
-            fallback_summary=left_article.summary
+            fallback_summary=left_article.summary,
+            source_name=left_article.source_name
         )
         
         right_text_result = await self.article_scraper.scrape_article(
             right_article.url,
-            fallback_summary=right_article.summary
+            fallback_summary=right_article.summary,
+            source_name=right_article.source_name
         )
         
         # Generate perspectives
