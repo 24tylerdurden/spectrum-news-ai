@@ -25,7 +25,8 @@ class PipelineOrchestrator:
             model=config.AI_MODEL,
             api_key=config.ANTHROPIC_API_KEY,
             openai_api_key=config.OPENAI_API_KEY,
-            ollama_base_url=config.OLLAMA_BASE_URL
+            ollama_base_url=config.OLLAMA_BASE_URL,
+            gemini_api_key=config.GEMINI_API_KEY
         )
         self.db_client = DatabaseClient(config.DATABASE_URL)
         self.db_state = DatabaseState(config.DATABASE_URL)
@@ -57,6 +58,7 @@ class PipelineOrchestrator:
                     unprocessed_articles.append(article)
             
             logger.info(f"Found {len(unprocessed_articles)} unprocessed articles")
+            logger.info(f"Unprocessed articles: {unprocessed_articles}")
             
             if not unprocessed_articles:
                 logger.info("No new articles to process")
@@ -66,6 +68,7 @@ class PipelineOrchestrator:
             logger.info("Step 3: Clustering articles...")
             clusters = self.clusterer.cluster_articles(unprocessed_articles)
             logger.info(f"Found {len(clusters)} valid clusters")
+            logger.info(f"Clusters data: {clusters}")
             
             if not clusters:
                 logger.info("No valid clusters found")
