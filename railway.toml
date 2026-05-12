@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python main.py"
+startCommand = "python main.py --run-now"
 
 
 [[services]]
