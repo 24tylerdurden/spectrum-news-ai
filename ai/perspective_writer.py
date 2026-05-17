@@ -270,15 +270,15 @@ class PerspectiveWriter:
         "category": "one of: politics, economy, world, sports, entertainment, technology, health, environment, other",
         "left": {{
             "headline": "progressive framing headline — lead with human impact or systemic concern",
-            "summary": "<p class=\\"summary-lead\\"><strong>[hook]</strong></p><p>[facts with specifics]</p><p class=\\"summary-question\\"><em>[pointed question]</em></p>",
-            "body": "200-250 words in HTML <p> tags written as a progressive journalist would write it",
+            "summary": "Plain text summary, 3-4 sentences, no HTML tags, punchy and direct",
+            "body": "• Bullet point one\\n• Bullet point two\\n• Include Image: [description if available]\\n• Bullet point three",,
             "source_name": "{left_article.source_name}",
             "source_url": "{left_article.url}"
         }},
         "right": {{
             "headline": "conservative framing headline — lead with policy rationale or national interest",
-            "summary": "<p class=\\"summary-lead\\"><strong>[hook]</strong></p><p>[facts with specifics]</p><p class=\\"summary-question\\"><em>[bold assertion]</em></p>",
-            "body": "200-250 words in HTML <p> tags written as a conservative journalist would write it",
+            "summary": "Plain text summary, 3-4 sentences, no HTML tags, punchy and direct",
+            "body": "• Bullet point one\\n• Bullet point two\\n• Include Image: [description if available]\\n• Bullet point three",
             "source_name": "{right_article.source_name}",
             "source_url": "{right_article.url}"
         }}
