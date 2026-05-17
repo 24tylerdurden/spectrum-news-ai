@@ -22,7 +22,7 @@ class ArticleClusterer:
         self,
         model_name: str = "paraphrase-multilingual-MiniLM-L12-v2",
         similarity_threshold: float = 0.75,
-        min_cluster_similarity: float = 0.72,
+        min_cluster_similarity: float = 0.65,
     ):
         """
         Args:
@@ -43,12 +43,6 @@ class ArticleClusterer:
         if not articles:
             return []
 
-        left_articles  = [a for a in articles if a.lean == "left"]
-        right_articles = [a for a in articles if a.lean == "right"]
-
-        if not left_articles or not right_articles:
-            logger.info("Need at least one left and one right article to form clusters")
-            return []
 
         # 1. Build rich text representations
         texts = [self._article_text(a) for a in articles]
@@ -59,6 +53,20 @@ class ArticleClusterer:
 
         # 3. Compute full similarity matrix
         similarity_matrix = cosine_similarity(embeddings)
+
+        # DEBUG: inspect similarity distribution
+        n = len(articles)
+        upper = similarity_matrix[np.triu_indices(n, k=1)]
+        logger.info(f"Similarity stats — min: {upper.min():.3f}, max: {upper.max():.3f}, "
+                    f"mean: {upper.mean():.3f}, median: {np.median(upper):.3f}")
+        logger.info(f"Pairs above 0.20: {(upper > 0.20).sum()}")
+        logger.info(f"Pairs above 0.50: {(upper > 0.50).sum()}")
+        logger.info(f"Pairs above 0.70: {(upper > 0.70).sum()}")
+        flat_indices = np.argsort(upper)[::-1][:5]
+        rows, cols = np.triu_indices(n, k=1)
+        for idx in flat_indices:
+            i, j = rows[idx], cols[idx]
+            logger.info(f"  {similarity_matrix[i][j]:.3f} | {articles[i].title[:60]} | {articles[j].title[:60]}")
 
         # 4. Community detection — much better than greedy BFS
         raw_clusters = self._community_detection(articles, similarity_matrix)
@@ -88,10 +96,12 @@ class ArticleClusterer:
         parts = [article.title.strip()]
 
         # Support both .snippet and .description attribute names
-        snippet = getattr(article, "snippet", None) or getattr(article, "description", None)
+        snippet = getattr(article, "snippet", None) or getattr(article, "description", None) or getattr(article, "summary", None)
         if snippet:
+            from bs4 import BeautifulSoup
+            clean = BeautifulSoup(snippet, "lxml").get_text(separator=" ")
             # First 200 chars is enough — we want topic signal, not full content
-            parts.append(snippet.strip()[:200])
+            parts.append(snippet.strip()[:300])
 
         return " | ".join(parts)
 
@@ -150,6 +160,7 @@ class ArticleClusterer:
                         visited[neighbour] = True
                         queue.append(neighbour)
             components.append(component)
+        
 
         # Convert index lists → article lists, then coherence-filter
         clusters: List[List[RawArticle]] = []
@@ -175,6 +186,9 @@ class ArticleClusterer:
         Returns a list of groups (usually just one, occasionally zero if
         the cluster disintegrates below size 2).
         """
+
+        logger.debug(f"Coherence check: group size {len(group)}, leans: {[a.lean for a in group]}")
+
         indices = list(range(len(group)))
 
         while len(indices) >= 2:
@@ -211,12 +225,14 @@ class ArticleClusterer:
         reliability representative from each lean.  Returns None if the
         group lacks both a left and a right article.
         """
+
+        if not group:
+            return None
+
         left_in  = [a for a in group if a.lean == "left"]
         right_in = [a for a in group if a.lean == "right"]
         centre_in = [a for a in group if a.lean == "centre"]
 
-        if not left_in or not right_in:
-            return None
 
         # Deduplicate within each lean by source — keep highest reliability
         best_left   = self._best_article(left_in)
@@ -224,12 +240,14 @@ class ArticleClusterer:
         best_centre = self._best_article(centre_in) if centre_in else None
 
         return Cluster(
-            left_articles=[best_left],
-            right_articles=[best_right],
+            left_articles=[best_left] if best_left else [],
+            right_articles=[best_right] if best_right else [],
             centre_articles=[best_centre] if best_centre else [],
         )
 
     @staticmethod
     def _best_article(articles: List[RawArticle]) -> RawArticle:
         """Return the article with the highest reliability score."""
-        return max(articles, key=lambda a: a.reliability)
+        if len(articles) > 0 :
+            return max(articles, key=lambda a: a.reliability)
+        return None
