@@ -217,7 +217,7 @@ class PerspectiveWriter:
         The summary is the FIRST thing readers see. It must make them immediately feel
         the difference in perspective — like reading two different realities of the same event.
 
-        Each summary must be a punchy HTML snippet structured like this:
+        Each summary must be a PLAIN TEXT snippet — NO HTML tags allowed. Keep it punchy and direct.
 
         PROGRESSIVE summary rules:
         - Open with the human cost, the gap, or the systemic concern
@@ -225,6 +225,7 @@ class PerspectiveWriter:
         - Name specific affected groups — workers, patients, communities, the vulnerable
         - End with a pointed question or call for accountability
         - Tone: urgent, empathetic, reform-minded but still journalistic
+        - Format: 3-4 sentences maximum, plain text only, no HTML
 
         CONSERVATIVE summary rules:
         - Open with the policy rationale, the national interest, or the practical reality
@@ -232,30 +233,56 @@ class PerspectiveWriter:
         - Emphasise order, efficiency, growth, security, or proven systems
         - End with a forward-looking assertion about stability or progress
         - Tone: authoritative, solutions-focused, skeptical of rushed change
-
-        HTML format for BOTH summaries — use exactly this structure:
-        <p class="summary-lead"><strong>[One punchy sentence that is the ideological hook]</strong></p>
-        <p>[2-3 sentences expanding with specific facts, names, numbers from the article]</p>
-        <p class="summary-question"><em>[Closing line — a pointed question (progressive) or bold assertion (conservative)]</em></p>
+        - Format: 3-4 sentences maximum, plain text only, no HTML
 
         EXAMPLE — factory closure story:
 
         Progressive summary:
-        <p class="summary-lead"><strong>Three thousand workers woke up jobless today while the government celebrated "ease of doing business."</strong></p>
-        <p>The abrupt shutdown of Bharat Steel's Nagpur plant has left daily-wage labourers with no severance, no notice, and no safety net — exposing the hollow promises of industrial policy that prioritises investor returns over worker rights.</p>
-        <p class="summary-question"><em>Who is held accountable when the system fails the people it claims to protect?</em></p>
+        Three thousand workers woke up jobless today while the government celebrated "ease of doing business." The abrupt shutdown of Bharat Steel's Nagpur plant has left daily-wage labourers with no severance, no notice, and no safety net — exposing the hollow promises of industrial policy that prioritises investor returns over worker rights. Who is held accountable when the system fails the people it claims to protect?
 
         Conservative summary:
-        <p class="summary-lead"><strong>Bharat Steel's Nagpur closure is a wake-up call for the labour reforms business has demanded for a decade.</strong></p>
-        <p>The plant's shutdown, driven by uncompetitive cost structures and rigid labour laws, underscores why India must modernise its industrial framework to attract the next generation of manufacturing investment.</p>
-        <p class="summary-question"><em>Without bold reform, India risks watching these jobs migrate to Vietnam and Bangladesh permanently.</em></p>
+        Bharat Steel's Nagpur closure is a wake-up call for the labour reforms business has demanded for a decade. The plant's shutdown, driven by uncompetitive cost structures and rigid labour laws, underscores why India must modernise its industrial framework to attract the next generation of manufacturing investment. Without bold reform, India risks watching these jobs migrate to Vietnam and Bangladesh permanently.
 
         Notice how both use the SAME facts but feel like completely different stories.
         ─────────────────────────────────────────
 
+        BODY FORMAT RULES — STRICT COMPLIANCE REQUIRED
+        ─────────────────────────────────────────
+        The body MUST be an HTML unordered list (<ul><li>...</li></ul>). Each <li> must be:
+        - Short and crisp (one sentence, 10-20 words max)
+        - Specific with facts, names, numbers, or quotes from the source
+        - A distinct point that supports the perspective's framing
+        - Written in active voice
+
+        Include 3-5 <li> items per perspective.
+
+        EXAMPLE — body format:
+
+        Progressive body:
+        <ul>
+        <li>3,000 workers laid off overnight with zero severance pay and no advance notice</li>
+        <li>Bharat Steel's Nagpur plant was the region's largest employer since 1987</li>
+        <li>Daily-wage labourers report being locked out of the factory premises at 6 AM without explanation</li>
+        <li>State labour minister promised "investigation" but offered no timeline or relief package</li>
+        <li>Plant closure violates Section 25-N of the Industrial Disputes Act requiring 60-day notice</li>
+        <li>Local economy projected to lose ₹45 crore in monthly circulation as spending collapses</li>
+        </ul>
+
+        Conservative body:
+        <ul>
+        <li>Bharat Steel's Nagpur unit lost ₹340 crore over the past 3 years due to outdated machinery</li>
+        <li>India's labour productivity ranks 126th globally, behind Vietnam and Bangladesh</li>
+        <li>Current labour laws require government permission to lay off even a single worker</li>
+        <li>The plant's 1,200 permanent workers enjoyed 35% higher wages than private sector average</li>
+        <li>Nagpur closure frees up 180 acres of industrial land for modern manufacturing investment</li>
+        <li>Japanese and Korean firms have expressed interest in the site under new SEZ terms</li>
+        </ul>
+
+        ─────────────────────────────────────────
+
         Write like a skilled journalist who genuinely holds that perspective. Use specific
         details, quotes, and numbers from the source articles. Do NOT be generic —
-        every sentence should feel like it was written by someone who cares deeply about
+        every bullet point should feel like it was written by someone who cares deeply about
         their worldview.
 
         Return ONLY a valid JSON object — no markdown, no extra text, no code fences.
@@ -270,15 +297,15 @@ class PerspectiveWriter:
         "category": "one of: politics, economy, world, sports, entertainment, technology, health, environment, other",
         "left": {{
             "headline": "progressive framing headline — lead with human impact or systemic concern",
-            "summary": "Plain text summary, 3-4 sentences, no HTML tags, punchy and direct",
-            "body": "• Bullet point one\\n• Bullet point two\\n• Include Image: [description if available]\\n• Bullet point three",,
+            "summary": "Very short and striking summary in 30-50 words",
+            "body": "<ul><li>Bullet point one</li><li>Bullet point two</li><li>Bullet point three</li></ul>",
             "source_name": "{left_article.source_name}",
             "source_url": "{left_article.url}"
         }},
         "right": {{
             "headline": "conservative framing headline — lead with policy rationale or national interest",
-            "summary": "Plain text summary, 3-4 sentences, no HTML tags, punchy and direct",
-            "body": "• Bullet point one\\n• Bullet point two\\n• Include Image: [description if available]\\n• Bullet point three",
+            "summary": "Very short and striking summary in 30-50 words",
+            "body": "<ul><li>Bullet point one</li><li>Bullet point two</li><li>Bullet point three</li></ul>",
             "source_name": "{right_article.source_name}",
             "source_url": "{right_article.url}"
         }}
